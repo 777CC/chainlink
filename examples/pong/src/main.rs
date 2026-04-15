@@ -1,4 +1,4 @@
-//! **Pong** — a complete two-player pong game built on the Godot-Rust engine.
+//! **Pong** — a complete two-player pong game built on the Chainlink Game Engine.
 //!
 //! Controls
 //! ─────────
@@ -8,10 +8,10 @@
 
 use std::any::Any;
 
-use gd_core::{Color, Vec2};
-use gd_engine::Engine;
-use gd_input::{InputEvent, Key};
-use gd_scene::node::{Node, NodeContext};
+use chainlink_core::{Color, Vec2};
+use chainlink_engine::Engine;
+use chainlink_input::{InputEvent, Key};
+use chainlink_scene::node::{Node, NodeContext};
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -270,7 +270,7 @@ fn draw_score(ctx: &mut NodeContext, score: u32, center_x: f32) {
 
 fn main() {
     let engine = Engine::builder()
-        .title("Pong — Godot-Rust Engine")
+        .title("Pong — Chainlink Game Engine")
         .size(W as u32, H as u32)
         .build();
 

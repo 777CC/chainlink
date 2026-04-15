@@ -262,6 +262,60 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fd16c4719339c4530435d38e511904438d07cce7950afa3718a84ac36c10e89e"
 
 [[package]]
+name = "chainlink_core"
+version = "0.1.0"
+dependencies = [
+ "glam",
+ "log",
+]
+
+[[package]]
+name = "chainlink_engine"
+version = "0.1.0"
+dependencies = [
+ "chainlink_core",
+ "chainlink_input",
+ "chainlink_render",
+ "chainlink_scene",
+ "env_logger",
+ "log",
+ "pollster",
+ "wgpu",
+ "winit",
+]
+
+[[package]]
+name = "chainlink_input"
+version = "0.1.0"
+dependencies = [
+ "chainlink_core",
+ "log",
+]
+
+[[package]]
+name = "chainlink_render"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "chainlink_core",
+ "chainlink_scene",
+ "glam",
+ "log",
+ "pollster",
+ "wgpu",
+]
+
+[[package]]
+name = "chainlink_scene"
+version = "0.1.0"
+dependencies = [
+ "chainlink_core",
+ "chainlink_input",
+ "log",
+ "slotmap",
+]
+
+[[package]]
 name = "codespan-reporting"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -489,60 +543,6 @@ dependencies = [
  "futures-task",
  "pin-project-lite",
  "slab",
-]
-
-[[package]]
-name = "gd_core"
-version = "0.1.0"
-dependencies = [
- "glam",
- "log",
-]
-
-[[package]]
-name = "gd_engine"
-version = "0.1.0"
-dependencies = [
- "env_logger",
- "gd_core",
- "gd_input",
- "gd_render",
- "gd_scene",
- "log",
- "pollster",
- "wgpu",
- "winit",
-]
-
-[[package]]
-name = "gd_input"
-version = "0.1.0"
-dependencies = [
- "gd_core",
- "log",
-]
-
-[[package]]
-name = "gd_render"
-version = "0.1.0"
-dependencies = [
- "bytemuck",
- "gd_core",
- "gd_scene",
- "glam",
- "log",
- "pollster",
- "wgpu",
-]
-
-[[package]]
-name = "gd_scene"
-version = "0.1.0"
-dependencies = [
- "gd_core",
- "gd_input",
- "log",
- "slotmap",
 ]
 
 [[package]]
@@ -1149,11 +1149,11 @@ checksum = "22686f4785f02a4fcc856d3b3bb19bf6c8160d103f7a99cc258bddd0251dc7f2"
 name = "pong"
 version = "0.1.0"
 dependencies = [
+ "chainlink_core",
+ "chainlink_engine",
+ "chainlink_input",
+ "chainlink_scene",
  "env_logger",
- "gd_core",
- "gd_engine",
- "gd_input",
- "gd_scene",
  "log",
 ]
 

@@ -1,0 +1,12 @@
+[package]
+name        = "chainlink_scene"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+chainlink_core  = { workspace = true }
+chainlink_input = { workspace = true }
+slotmap         = { workspace = true }
+log             = { workspace = true }
