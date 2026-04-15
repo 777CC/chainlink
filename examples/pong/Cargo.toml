@@ -1,0 +1,19 @@
+[package]
+name        = "pong"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "pong"
+path = "src/main.rs"
+
+[dependencies]
+gd_core   = { workspace = true }
+gd_input  = { workspace = true }
+gd_scene  = { workspace = true }
+gd_engine = { workspace = true }
+
+log        = { workspace = true }
+env_logger = { workspace = true }

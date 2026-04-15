@@ -1,0 +1,45 @@
+[workspace]
+members = [
+    "crates/gd_core",
+    "crates/gd_input",
+    "crates/gd_scene",
+    "crates/gd_render",
+    "crates/gd_engine",
+    "examples/pong",
+]
+resolver = "2"
+
+[workspace.package]
+version      = "0.1.0"
+edition      = "2021"
+authors      = ["Godot-Rust-Core Contributors"]
+license      = "MIT"
+repository   = "https://github.com/777cc/chainlink"
+description  = "A Godot-inspired game engine with a pure-Rust core"
+
+[workspace.dependencies]
+# Internal crates
+gd_core   = { path = "crates/gd_core" }
+gd_input  = { path = "crates/gd_input" }
+gd_scene  = { path = "crates/gd_scene" }
+gd_render = { path = "crates/gd_render" }
+gd_engine = { path = "crates/gd_engine" }
+
+# Math
+glam = "0.27"
+
+# GPU / windowing
+winit       = "0.29"
+wgpu        = "0.19"
+bytemuck    = { version = "1", features = ["derive"] }
+pollster    = "0.3"
+
+# Data structures
+slotmap = "1"
+
+# Logging
+log        = "0.4"
+env_logger = "0.10"
+
+# Async helper (for wgpu init)
+futures = { version = "0.3", default-features = false, features = ["executor"] }

@@ -1,0 +1,16 @@
+[package]
+name        = "gd_render"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+gd_core  = { workspace = true }
+gd_scene = { workspace = true }
+
+wgpu     = { workspace = true }
+bytemuck = { workspace = true }
+glam     = { workspace = true }
+log      = { workspace = true }
+pollster = { workspace = true }

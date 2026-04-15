@@ -1,0 +1,12 @@
+[package]
+name        = "gd_scene"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+gd_core  = { workspace = true }
+gd_input = { workspace = true }
+slotmap  = { workspace = true }
+log      = { workspace = true }
