@@ -1,10 +1,10 @@
 [workspace]
 members = [
-    "crates/chainlink_core",
-    "crates/chainlink_input",
-    "crates/chainlink_scene",
-    "crates/chainlink_render",
-    "crates/chainlink_engine",
+    "crates/cl_core",
+    "crates/cl_input",
+    "crates/cl_scene",
+    "crates/cl_render",
+    "crates/cl_engine",
     "examples/pong",
 ]
 resolver = "2"
@@ -19,11 +19,11 @@ description  = "Chainlink Game Engine — a Godot-inspired engine with a pure-Ru
 
 [workspace.dependencies]
 # Internal crates
-chainlink_core   = { path = "crates/chainlink_core" }
-chainlink_input  = { path = "crates/chainlink_input" }
-chainlink_scene  = { path = "crates/chainlink_scene" }
-chainlink_render = { path = "crates/chainlink_render" }
-chainlink_engine = { path = "crates/chainlink_engine" }
+cl_core   = { path = "crates/cl_core" }
+cl_input  = { path = "crates/cl_input" }
+cl_scene  = { path = "crates/cl_scene" }
+cl_render = { path = "crates/cl_render" }
+cl_engine = { path = "crates/cl_engine" }
 
 # Math
 glam = "0.27"

@@ -8,10 +8,10 @@
 
 use std::any::Any;
 
-use chainlink_core::{Color, Vec2};
-use chainlink_engine::Engine;
-use chainlink_input::{InputEvent, Key};
-use chainlink_scene::node::{Node, NodeContext};
+use cl_core::{Color, Vec2};
+use cl_engine::Engine;
+use cl_input::{InputEvent, Key};
+use cl_scene::node::{Node, NodeContext};
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 

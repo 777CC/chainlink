@@ -1,19 +1,25 @@
 [package]
-name        = "pong"
+name        = "cl_engine"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
 
+[lib]
+name = "cl_engine"
+
 [[bin]]
-name = "pong"
+name = "cl_engine"
 path = "src/main.rs"
 
 [dependencies]
 cl_core   = { workspace = true }
 cl_input  = { workspace = true }
 cl_scene  = { workspace = true }
-cl_engine = { workspace = true }
+cl_render = { workspace = true }
 
+winit      = { workspace = true }
+wgpu       = { workspace = true }
 log        = { workspace = true }
 env_logger = { workspace = true }
+pollster   = { workspace = true }

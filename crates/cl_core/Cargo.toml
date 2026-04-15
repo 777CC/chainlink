@@ -1,0 +1,10 @@
+[package]
+name        = "cl_core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+glam = { workspace = true }
+log  = { workspace = true }

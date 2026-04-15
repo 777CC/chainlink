@@ -1,0 +1,12 @@
+[package]
+name        = "cl_scene"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+cl_core  = { workspace = true }
+cl_input = { workspace = true }
+slotmap  = { workspace = true }
+log      = { workspace = true }
