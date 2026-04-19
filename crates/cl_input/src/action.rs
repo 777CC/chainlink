@@ -50,3 +50,47 @@ impl InputMap {
             .map_or(false, |keys| keys.contains(&key))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn add_action_and_query() {
+        let mut map = InputMap::new();
+        map.add_action("jump", Key::Space);
+        assert!(map.action_has_key("jump", Key::Space));
+        assert!(!map.action_has_key("jump", Key::Enter));
+    }
+
+    #[test]
+    fn add_action_multiple_keys() {
+        let mut map = InputMap::new();
+        map.add_action("confirm", Key::Enter);
+        map.add_action("confirm", Key::Space);
+        let keys = map.keys_for("confirm").unwrap();
+        assert!(keys.contains(&Key::Enter));
+        assert!(keys.contains(&Key::Space));
+    }
+
+    #[test]
+    fn remove_action_clears_bindings() {
+        let mut map = InputMap::new();
+        map.add_action("fire", Key::Space);
+        map.remove_action("fire");
+        assert!(map.keys_for("fire").is_none());
+    }
+
+    #[test]
+    fn unknown_action_returns_none() {
+        let map = InputMap::new();
+        assert!(map.keys_for("nonexistent").is_none());
+        assert!(!map.action_has_key("nonexistent", Key::Space));
+    }
+
+    #[test]
+    fn input_action_name() {
+        let a = InputAction::new("move_left");
+        assert_eq!(a.name(), "move_left");
+    }
+}

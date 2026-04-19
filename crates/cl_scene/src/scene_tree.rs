@@ -173,7 +173,7 @@ impl SceneTree {
 
     // ── Command application ───────────────────────────────────────────────────
 
-    fn apply_commands(&mut self, commands: Vec<SceneCommand>) {
+    pub(crate) fn apply_commands(&mut self, commands: Vec<SceneCommand>) {
         for cmd in commands {
             match cmd {
                 SceneCommand::AddChild { parent, node } => {
@@ -192,4 +192,146 @@ impl SceneTree {
 
 impl Default for SceneTree {
     fn default() -> Self { Self::new() }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::node::{BaseNode, Node, NodeContext, SceneCommand};
+    use cl_core::{Color, Vec2};
+    use std::any::Any;
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    fn tree_with_root(name: &str) -> (SceneTree, NodeId) {
+        let mut tree = SceneTree::new();
+        let id = tree.set_root_scene(BaseNode::new(name));
+        (tree, id)
+    }
+
+    // ── add_child / structure ─────────────────────────────────────────────────
+
+    #[test]
+    fn add_root_sets_root_id() {
+        let (tree, root) = tree_with_root("Root");
+        assert_eq!(tree.root, Some(root));
+    }
+
+    #[test]
+    fn add_child_records_parent_child_edges() {
+        let (mut tree, root) = tree_with_root("Root");
+        let child = tree.add_child(Some(root), BaseNode::new("Child"));
+        assert!(tree.children_of(root).contains(&child));
+        assert_eq!(tree.parent_of(child), Some(root));
+    }
+
+    #[test]
+    fn get_returns_node_by_id() {
+        let (tree, root) = tree_with_root("Root");
+        assert_eq!(tree.get(root).unwrap().name(), "Root");
+    }
+
+    #[test]
+    fn all_node_ids_depth_first() {
+        let (mut tree, root) = tree_with_root("Root");
+        let a = tree.add_child(Some(root), BaseNode::new("A"));
+        let b = tree.add_child(Some(root), BaseNode::new("B"));
+        let a1 = tree.add_child(Some(a), BaseNode::new("A1"));
+
+        let ids = tree.all_node_ids();
+        assert_eq!(ids[0], root);
+        // A must come before A1
+        let pos_a  = ids.iter().position(|&x| x == a).unwrap();
+        let pos_a1 = ids.iter().position(|&x| x == a1).unwrap();
+        assert!(pos_a < pos_a1);
+        // B must be present
+        assert!(ids.contains(&b));
+    }
+
+    // ── remove_subtree ────────────────────────────────────────────────────────
+
+    #[test]
+    fn remove_subtree_drops_node_and_children() {
+        let (mut tree, root) = tree_with_root("Root");
+        let child = tree.add_child(Some(root), BaseNode::new("Child"));
+        let grand = tree.add_child(Some(child), BaseNode::new("Grand"));
+
+        tree.remove_subtree(child);
+
+        assert!(tree.get(child).is_none());
+        assert!(tree.get(grand).is_none());
+        assert!(tree.children_of(root).is_empty());
+    }
+
+    // ── set_root_scene ────────────────────────────────────────────────────────
+
+    #[test]
+    fn set_root_scene_replaces_previous_tree() {
+        let (mut tree, old_root) = tree_with_root("Old");
+        let new_root = tree.set_root_scene(BaseNode::new("New"));
+        assert!(tree.get(old_root).is_none());
+        assert_eq!(tree.root, Some(new_root));
+    }
+
+    // ── process / draw queue ──────────────────────────────────────────────────
+
+    struct DrawingNode { name: String }
+
+    impl Node for DrawingNode {
+        fn name(&self) -> &str { &self.name }
+        fn process(&mut self, _delta: f64, ctx: &mut NodeContext) {
+            ctx.draw_rect(Vec2::new(1.0, 2.0), Vec2::new(10.0, 5.0), Color::RED);
+        }
+        fn as_any(&self) -> &dyn Any { self }
+        fn as_any_mut(&mut self) -> &mut dyn Any { self }
+    }
+
+    #[test]
+    fn process_returns_draw_calls_from_nodes() {
+        let mut tree = SceneTree::new();
+        tree.set_root_scene(Box::new(DrawingNode { name: "D".into() }));
+
+        let draws = tree.process(0.016, &[]);
+        assert_eq!(draws.len(), 1);
+        assert_eq!(draws[0].position, Vec2::new(1.0, 2.0));
+    }
+
+    // ── deferred commands ─────────────────────────────────────────────────────
+
+    struct SpawnerNode { spawned: bool }
+
+    impl Node for SpawnerNode {
+        fn name(&self) -> &str { "Spawner" }
+        fn process(&mut self, _delta: f64, ctx: &mut NodeContext) {
+            if !self.spawned {
+                self.spawned = true;
+                ctx.commands.push(SceneCommand::AddChild {
+                    parent: ctx.this_id,
+                    node:   BaseNode::new("Spawned"),
+                });
+            }
+        }
+        fn as_any(&self) -> &dyn Any { self }
+        fn as_any_mut(&mut self) -> &mut dyn Any { self }
+    }
+
+    #[test]
+    fn deferred_add_child_applied_after_process() {
+        let mut tree = SceneTree::new();
+        let root = tree.set_root_scene(Box::new(SpawnerNode { spawned: false }));
+
+        assert_eq!(tree.children_of(root).len(), 0);
+        tree.process(0.016, &[]);
+        assert_eq!(tree.children_of(root).len(), 1);
+    }
+
+    #[test]
+    fn deferred_queue_free_removes_node() {
+        let (mut tree, root) = tree_with_root("Root");
+        let child = tree.add_child(Some(root), BaseNode::new("Doomed"));
+
+        // Manually apply a QueueFree command
+        tree.apply_commands(vec![SceneCommand::QueueFree(child)]);
+        assert!(tree.get(child).is_none());
+    }
 }

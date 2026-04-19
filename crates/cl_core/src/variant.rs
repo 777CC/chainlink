@@ -54,3 +54,56 @@ impl From<&str>   for Variant { fn from(v: &str)   -> Self { Self::String(v.to_o
 impl From<Vec2>   for Variant { fn from(v: Vec2)   -> Self { Self::Vec2(v) } }
 impl From<Vec3>   for Variant { fn from(v: Vec3)   -> Self { Self::Vec3(v) } }
 impl From<Color>  for Variant { fn from(v: Color)  -> Self { Self::Color(v) } }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn variant_nil_is_nil() {
+        assert!(Variant::Nil.is_nil());
+        assert!(!Variant::Bool(true).is_nil());
+    }
+
+    #[test]
+    fn variant_as_bool() {
+        assert_eq!(Variant::Bool(true).as_bool(), Some(true));
+        assert_eq!(Variant::Bool(false).as_bool(), Some(false));
+        assert_eq!(Variant::Int(1).as_bool(), None);
+    }
+
+    #[test]
+    fn variant_as_int() {
+        assert_eq!(Variant::Int(7).as_int(), Some(7));
+        assert_eq!(Variant::Float(1.0).as_int(), None);
+    }
+
+    #[test]
+    fn variant_as_float_coerces_int() {
+        assert_eq!(Variant::Float(3.14).as_float(), Some(3.14));
+        assert_eq!(Variant::Int(5).as_float(), Some(5.0));
+        assert_eq!(Variant::Bool(true).as_float(), None);
+    }
+
+    #[test]
+    fn variant_as_str() {
+        assert_eq!(Variant::String("hi".into()).as_str(), Some("hi"));
+        assert_eq!(Variant::Int(1).as_str(), None);
+    }
+
+    #[test]
+    fn variant_from_primitives() {
+        assert!(matches!(Variant::from(true),         Variant::Bool(true)));
+        assert!(matches!(Variant::from(42_i32),       Variant::Int(42)));
+        assert!(matches!(Variant::from(42_i64),       Variant::Int(42)));
+        assert!(matches!(Variant::from(1.5_f32),      Variant::Float(_)));
+        assert!(matches!(Variant::from(1.5_f64),      Variant::Float(_)));
+        assert!(matches!(Variant::from("hello"),      Variant::String(_)));
+        assert!(matches!(Variant::from("x".to_string()), Variant::String(_)));
+    }
+
+    #[test]
+    fn variant_default_is_nil() {
+        assert!(Variant::default().is_nil());
+    }
+}

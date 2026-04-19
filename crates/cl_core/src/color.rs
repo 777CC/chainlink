@@ -75,3 +75,67 @@ impl From<[f32; 3]> for Color {
 impl From<Color> for [f32; 4] {
     fn from(c: Color) -> Self { c.to_array() }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn color_presets_are_correct() {
+        assert_eq!(Color::WHITE.to_array(), [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(Color::BLACK.to_array(), [0.0, 0.0, 0.0, 1.0]);
+        assert_eq!(Color::TRANSPARENT.a, 0.0);
+    }
+
+    #[test]
+    fn color_from_html_6_digit() {
+        let c = Color::from_html("#ff8000").unwrap();
+        assert!((c.r - 1.0).abs() < 1e-3);
+        assert!((c.g - 0.502).abs() < 1e-2);
+        assert!((c.b - 0.0).abs() < 1e-3);
+        assert_eq!(c.a, 1.0);
+    }
+
+    #[test]
+    fn color_from_html_8_digit_includes_alpha() {
+        let c = Color::from_html("#ffffff80").unwrap();
+        assert_eq!(c.r, 1.0);
+        assert!((c.a - 0.502).abs() < 1e-2);
+    }
+
+    #[test]
+    fn color_from_html_without_hash() {
+        assert!(Color::from_html("ff0000").is_some());
+    }
+
+    #[test]
+    fn color_from_html_invalid_returns_none() {
+        assert!(Color::from_html("#xyz").is_none());
+        assert!(Color::from_html("#12345").is_none());
+    }
+
+    #[test]
+    fn color_lerp_midpoint() {
+        let a = Color::BLACK;
+        let b = Color::WHITE;
+        let mid = a.lerp(b, 0.5);
+        assert!((mid.r - 0.5).abs() < 1e-6);
+        assert!((mid.g - 0.5).abs() < 1e-6);
+        assert!((mid.b - 0.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn color_lerp_at_zero_equals_self() {
+        let c = Color::RED;
+        let lerped = c.lerp(Color::BLUE, 0.0);
+        assert_eq!(lerped.r, c.r);
+        assert_eq!(lerped.b, c.b);
+    }
+
+    #[test]
+    fn color_from_array_roundtrip() {
+        let arr = [0.1, 0.2, 0.3, 0.4_f32];
+        let c = Color::from(arr);
+        assert_eq!(<[f32; 4]>::from(c), arr);
+    }
+}

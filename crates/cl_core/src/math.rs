@@ -96,3 +96,98 @@ impl Rect2 {
             && a_end.y > other.position.y
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── Transform2D ──────────────────────────────────────────────────────────
+
+    #[test]
+    fn transform2d_identity_is_zero_rotation_unit_scale() {
+        let t = Transform2D::IDENTITY;
+        assert_eq!(t.position, Vec2::ZERO);
+        assert_eq!(t.rotation, 0.0);
+        assert_eq!(t.scale, Vec2::ONE);
+    }
+
+    #[test]
+    fn transform2d_translated_adds_to_position() {
+        let t = Transform2D::IDENTITY.translated(Vec2::new(3.0, 4.0));
+        assert_eq!(t.position, Vec2::new(3.0, 4.0));
+        assert_eq!(t.rotation, 0.0);
+    }
+
+    #[test]
+    fn transform2d_rotated_adds_angle() {
+        let t = Transform2D::IDENTITY.rotated(1.0);
+        assert!((t.rotation - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn transform2d_to_mat4_identity_maps_point_to_itself() {
+        let m = Transform2D::IDENTITY.to_mat4();
+        let p = m * glam::Vec4::new(2.0, 3.0, 0.0, 1.0);
+        assert!((p.x - 2.0).abs() < 1e-5);
+        assert!((p.y - 3.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn transform2d_to_mat4_applies_translation() {
+        let t = Transform2D::new(Vec2::new(10.0, 20.0), 0.0, Vec2::ONE);
+        let m = t.to_mat4();
+        let p = m * glam::Vec4::new(0.0, 0.0, 0.0, 1.0);
+        assert!((p.x - 10.0).abs() < 1e-5);
+        assert!((p.y - 20.0).abs() < 1e-5);
+    }
+
+    // ── Rect2 ────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn rect2_end_is_position_plus_size() {
+        let r = Rect2::new(1.0, 2.0, 10.0, 5.0);
+        assert_eq!(r.end(), Vec2::new(11.0, 7.0));
+    }
+
+    #[test]
+    fn rect2_center() {
+        let r = Rect2::new(0.0, 0.0, 10.0, 4.0);
+        assert_eq!(r.center(), Vec2::new(5.0, 2.0));
+    }
+
+    #[test]
+    fn rect2_contains_point_inside() {
+        let r = Rect2::new(0.0, 0.0, 10.0, 10.0);
+        assert!(r.contains_point(Vec2::new(5.0, 5.0)));
+        assert!(r.contains_point(Vec2::new(0.0, 0.0))); // inclusive min
+    }
+
+    #[test]
+    fn rect2_contains_point_outside() {
+        let r = Rect2::new(0.0, 0.0, 10.0, 10.0);
+        assert!(!r.contains_point(Vec2::new(10.0, 5.0))); // exclusive max
+        assert!(!r.contains_point(Vec2::new(-1.0, 5.0)));
+    }
+
+    #[test]
+    fn rect2_intersects_overlapping() {
+        let a = Rect2::new(0.0, 0.0, 10.0, 10.0);
+        let b = Rect2::new(5.0, 5.0, 10.0, 10.0);
+        assert!(a.intersects(b));
+        assert!(b.intersects(a));
+    }
+
+    #[test]
+    fn rect2_intersects_touching_edge_is_false() {
+        let a = Rect2::new(0.0, 0.0, 5.0, 5.0);
+        let b = Rect2::new(5.0, 0.0, 5.0, 5.0);
+        assert!(!a.intersects(b)); // touching but not overlapping
+    }
+
+    #[test]
+    fn rect2_intersects_separated() {
+        let a = Rect2::new(0.0, 0.0, 4.0, 4.0);
+        let b = Rect2::new(10.0, 10.0, 4.0, 4.0);
+        assert!(!a.intersects(b));
+    }
+}
