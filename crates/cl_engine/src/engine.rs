@@ -3,8 +3,10 @@
 use std::sync::Arc;
 
 use cl_input::InputServer;
+use cl_platform::DisplayServer;
 use cl_render::Renderer;
 use cl_scene::SceneTree;
+use cl_servers::{AudioServer, PhysicsServer2D, RenderingServer};
 use log::{error, info};
 use pollster::block_on;
 use winit::{
@@ -15,6 +17,11 @@ use winit::{
 };
 
 use crate::{input_bridge::handle_window_event, time::GameTime};
+
+// ── Gravity constant ──────────────────────────────────────────────────────────
+
+/// Gravity in pixels·s⁻², positive Y is down (screen-space).
+const GRAVITY: cl_core::Vec2 = cl_core::Vec2::new(0.0, 980.0);
 
 // ── EngineBuilder ─────────────────────────────────────────────────────────────
 
@@ -55,7 +62,6 @@ impl Engine {
         env_logger::try_init().ok();
 
         // ── Event loop + window ───────────────────────────────────────────────
-        // EventLoop::new() returns Result in winit 0.29
         let event_loop = EventLoop::new().expect("Failed to create event loop");
 
         let window = Arc::new(
@@ -63,13 +69,12 @@ impl Engine {
                 .with_title(&self.title)
                 .with_inner_size(LogicalSize::new(self.width, self.height))
                 .with_resizable(true)
-                // winit 0.29: EventLoop<T> derefs to EventLoopWindowTarget<T>
                 .build(&event_loop)
                 .expect("Failed to create window"),
         );
         info!("Window created: {}×{}", self.width, self.height);
 
-        // ── wgpu surface (static lifetime via Arc<Window>) ────────────────────
+        // ── wgpu surface ──────────────────────────────────────────────────────
         let wgpu_instance = wgpu::Instance::default();
         let surface = wgpu_instance
             .create_surface(Arc::clone(&window))
@@ -80,21 +85,32 @@ impl Engine {
             (s.width.max(1), s.height.max(1))
         };
 
-        // ── Renderer + scene ──────────────────────────────────────────────────
+        // ── Renderer ──────────────────────────────────────────────────────────
         let mut renderer = block_on(Renderer::new(wgpu_instance, surface, init_size));
         info!("Renderer initialised");
 
+        // ── Servers ───────────────────────────────────────────────────────────
+        let mut rendering_server = RenderingServer::new();
+        let mut physics_server   = PhysicsServer2D::new();
+        let mut audio_server     = AudioServer::new();
+        let mut display_server   = DisplayServer::new(self.width, self.height, &self.title);
+
+        // ── Scene + input ─────────────────────────────────────────────────────
         let mut tree  = SceneTree::new();
         let mut input = InputServer::new();
 
         setup(&mut tree, &mut input);
-        tree.ready_all();
+        tree.ready_all(
+            &mut rendering_server,
+            &mut physics_server,
+            &mut audio_server,
+            &display_server,
+            &input,
+        );
 
         let mut time = GameTime::new();
 
         // ── Event loop ────────────────────────────────────────────────────────
-        // winit 0.29: run() takes FnMut(Event<T>, &EventLoopWindowTarget<T>)
-        // Control flow is managed via elwt methods, not a &mut ControlFlow arg.
         event_loop
             .run(move |event, elwt| {
                 elwt.set_control_flow(ControlFlow::Poll);
@@ -112,17 +128,29 @@ impl Engine {
                     Event::WindowEvent {
                         event: WindowEvent::Resized(new_size), ..
                     } => {
-                        renderer.resize((new_size.width.max(1), new_size.height.max(1)));
+                        let sz = (new_size.width.max(1), new_size.height.max(1));
+                        renderer.resize(sz);
+                        display_server.window_size = sz;
                     }
 
-                    // Tick + render once all OS events for this frame are drained.
-                    // In winit 0.29 this is `AboutToWait` (renamed from MainEventsCleared).
+                    // Tick + render
                     Event::AboutToWait => {
                         time.tick();
 
                         let events: Vec<_> = input.events.clone();
-                        let draw_queue = tree.process(time.delta, &events);
+                        let draw_queue = tree.process(
+                            time.delta,
+                            &events,
+                            &mut rendering_server,
+                            &mut physics_server,
+                            &mut audio_server,
+                            &display_server,
+                            &input,
+                        );
                         input.flush();
+
+                        // Step physics after scene process
+                        physics_server.step(time.delta as f32, GRAVITY);
 
                         match renderer.render(draw_queue) {
                             Ok(()) => {}
@@ -134,7 +162,7 @@ impl Engine {
                         }
                     }
 
-                    // Forward all other window events to the input bridge
+                    // Forward window events to input bridge
                     Event::WindowEvent { ref event, .. } => {
                         handle_window_event(&mut input, event);
                     }

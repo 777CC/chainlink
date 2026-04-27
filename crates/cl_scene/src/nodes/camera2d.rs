@@ -9,7 +9,8 @@ use crate::node::{Node, NodeContext};
 /// An orthographic 2-D camera.
 ///
 /// The renderer queries the active camera each frame to build the
-/// view-projection matrix.
+/// view-projection matrix.  The viewport size is read from the
+/// [`DisplayServer`] if available.
 pub struct Camera2D {
     pub name:     String,
     pub position: Vec2,
@@ -39,6 +40,11 @@ impl Camera2D {
         let cy = self.position.y;
 
         Mat4::orthographic_rh(cx - hw, cx + hw, cy + hh, cy - hh, -1000.0, 1000.0)
+    }
+
+    /// Orthographic matrix using the current display server viewport size.
+    pub fn view_proj_display(&self, ctx: &NodeContext) -> Mat4 {
+        self.view_proj(ctx.display.size_vec2())
     }
 }
 

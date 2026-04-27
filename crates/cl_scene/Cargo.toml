@@ -6,7 +6,9 @@ authors.workspace = true
 license.workspace = true
 
 [dependencies]
-cl_core  = { workspace = true }
-cl_input = { workspace = true }
-slotmap  = { workspace = true }
-log      = { workspace = true }
+cl_core     = { workspace = true }
+cl_input    = { workspace = true }
+cl_servers  = { workspace = true }
+cl_platform = { workspace = true }
+slotmap     = { workspace = true }
+log         = { workspace = true }

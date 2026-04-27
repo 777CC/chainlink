@@ -5,7 +5,10 @@ members = [
     "crates/cl_scene",
     "crates/cl_render",
     "crates/cl_engine",
+    "crates/cl_servers",
+    "crates/cl_platform",
     "examples/pong",
+    "examples/platformer",
 ]
 resolver = "2"
 
@@ -19,11 +22,13 @@ description  = "Chainlink Game Engine — a Godot-inspired engine with a pure-Ru
 
 [workspace.dependencies]
 # Internal crates
-cl_core   = { path = "crates/cl_core" }
-cl_input  = { path = "crates/cl_input" }
-cl_scene  = { path = "crates/cl_scene" }
-cl_render = { path = "crates/cl_render" }
-cl_engine = { path = "crates/cl_engine" }
+cl_core     = { path = "crates/cl_core" }
+cl_input    = { path = "crates/cl_input" }
+cl_scene    = { path = "crates/cl_scene" }
+cl_render   = { path = "crates/cl_render" }
+cl_engine   = { path = "crates/cl_engine" }
+cl_servers  = { path = "crates/cl_servers" }
+cl_platform = { path = "crates/cl_platform" }
 
 # Math
 glam = "0.27"
@@ -43,3 +48,9 @@ env_logger = "0.10"
 
 # Async helper (for wgpu init)
 futures = { version = "0.3", default-features = false, features = ["executor"] }
+
+# Physics
+rapier2d = { version = "0.22", features = ["default"] }
+
+# Audio
+rodio = { version = "0.19", default-features = false, features = ["wav", "vorbis"] }

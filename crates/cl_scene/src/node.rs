@@ -38,8 +38,8 @@ pub enum SceneCommand {
 
 /// Context passed to node lifecycle callbacks.
 ///
-/// Contains read access to the tree and a mutable command queue so that
-/// nodes can request structural changes without borrowing the tree mutably.
+/// Contains access to the current frame's resources: draw queue, deferred
+/// commands, all server singletons, and the input server.
 pub struct NodeContext<'a> {
     /// The id of the node currently being processed.
     pub this_id: NodeId,
@@ -47,6 +47,19 @@ pub struct NodeContext<'a> {
     pub draw_queue: &'a mut Vec<DrawRect>,
     /// Deferred scene commands.
     pub commands: &'a mut Vec<SceneCommand>,
+    // ── Servers ───────────────────────────────────────────────────────────────
+    /// RID-based 2-D canvas / rendering server.
+    pub rendering:  &'a mut cl_servers::RenderingServer,
+    /// 2-D physics world.
+    pub physics_2d: &'a mut cl_servers::PhysicsServer2D,
+    /// Audio playback server.
+    pub audio:      &'a mut cl_servers::AudioServer,
+    /// Window/display information (read-only).
+    pub display:    &'a cl_platform::DisplayServer,
+    /// Input server (key/mouse state).
+    pub input:      &'a cl_input::InputServer,
+    /// Elapsed time this frame in seconds.
+    pub delta:      f64,
 }
 
 impl<'a> NodeContext<'a> {
@@ -121,4 +134,45 @@ impl Node for BaseNode {
     fn name(&self) -> &str { &self.name }
     fn as_any(&self) -> &dyn Any { self }
     fn as_any_mut(&mut self) -> &mut dyn Any { self }
+}
+
+// ─── Test helpers ─────────────────────────────────────────────────────────────
+
+/// Build a minimal [`NodeContext`] for unit tests.
+///
+/// The returned context has no-op servers and an empty input state.
+/// The closures take ownership of the mutable vecs so they can be inspected
+/// after the call.
+#[cfg(test)]
+pub mod test_helpers {
+    use super::*;
+
+    /// Execute a closure with a throwaway [`NodeContext`] and return the
+    /// draw queue that was accumulated.
+    pub fn with_ctx<F>(id: NodeId, delta: f64, f: F) -> Vec<DrawRect>
+    where
+        F: FnOnce(&mut NodeContext<'_>),
+    {
+        let mut draw_queue = Vec::new();
+        let mut commands   = Vec::new();
+        let mut rendering  = cl_servers::RenderingServer::new();
+        let mut physics    = cl_servers::PhysicsServer2D::new();
+        let mut audio      = cl_servers::AudioServer::new();
+        let display        = cl_platform::DisplayServer::new(1280, 720, "Test");
+        let input          = cl_input::InputServer::new();
+
+        let mut ctx = NodeContext {
+            this_id:    id,
+            draw_queue: &mut draw_queue,
+            commands:   &mut commands,
+            rendering:  &mut rendering,
+            physics_2d: &mut physics,
+            audio:      &mut audio,
+            display:    &display,
+            input:      &input,
+            delta,
+        };
+        f(&mut ctx);
+        draw_queue
+    }
 }

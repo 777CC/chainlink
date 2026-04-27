@@ -4,8 +4,11 @@ use std::collections::HashMap;
 use slotmap::SlotMap;
 use log::debug;
 
+use cl_input::{InputEvent, InputServer};
+use cl_servers::{AudioServer, PhysicsServer2D, RenderingServer};
+use cl_platform::DisplayServer;
+
 use crate::node::{DrawRect, Node, NodeContext, NodeId, SceneCommand};
-use cl_input::InputEvent;
 
 /// The scene tree; the heart of the engine's object model.
 ///
@@ -120,10 +123,15 @@ impl SceneTree {
 
     // ── Frame update ──────────────────────────────────────────────────────────
 
-    /// Call `ready` on every node that hasn't had it called yet.
-    /// (In practice you'd track a "is_ready" flag; here we call it on all nodes
-    ///  the first time `update` is invoked — simplified for clarity.)
-    pub fn ready_all(&mut self) {
+    /// Call `ready` on every node in the tree.
+    pub fn ready_all(
+        &mut self,
+        rendering:  &mut RenderingServer,
+        physics_2d: &mut PhysicsServer2D,
+        audio:      &mut AudioServer,
+        display:    &DisplayServer,
+        input:      &InputServer,
+    ) {
         let ids = self.all_node_ids();
         let mut draw_queue = Vec::new();
         let mut commands   = Vec::new();
@@ -131,9 +139,15 @@ impl SceneTree {
         for id in ids {
             if let Some(node) = self.nodes.get_mut(id) {
                 let mut ctx = NodeContext {
-                    this_id: id,
+                    this_id:    id,
                     draw_queue: &mut draw_queue,
-                    commands: &mut commands,
+                    commands:   &mut commands,
+                    rendering,
+                    physics_2d,
+                    audio,
+                    display,
+                    input,
+                    delta: 0.0,
                 };
                 node.ready(&mut ctx);
             }
@@ -145,8 +159,13 @@ impl SceneTree {
     /// Process all nodes for one frame.  Returns the draw queue.
     pub fn process(
         &mut self,
-        delta: f64,
-        events: &[InputEvent],
+        delta:      f64,
+        events:     &[InputEvent],
+        rendering:  &mut RenderingServer,
+        physics_2d: &mut PhysicsServer2D,
+        audio:      &mut AudioServer,
+        display:    &DisplayServer,
+        input:      &InputServer,
     ) -> Vec<DrawRect> {
         let ids = self.all_node_ids();
         let mut draw_queue = Vec::new();
@@ -156,9 +175,15 @@ impl SceneTree {
             let id = *id;
             if let Some(node) = self.nodes.get_mut(id) {
                 let mut ctx = NodeContext {
-                    this_id: id,
+                    this_id:    id,
                     draw_queue: &mut draw_queue,
-                    commands: &mut commands,
+                    commands:   &mut commands,
+                    rendering,
+                    physics_2d,
+                    audio,
+                    display,
+                    input,
+                    delta,
                 };
                 node.process(delta, &mut ctx);
                 for ev in events {
@@ -202,6 +227,16 @@ mod tests {
     use std::any::Any;
 
     // ── Helpers ──────────────────────────────────────────────────────────────
+
+    fn make_servers() -> (RenderingServer, PhysicsServer2D, AudioServer, DisplayServer, InputServer) {
+        (
+            RenderingServer::new(),
+            PhysicsServer2D::new(),
+            AudioServer::new(),
+            DisplayServer::new(1280, 720, "Test"),
+            InputServer::new(),
+        )
+    }
 
     fn tree_with_root(name: &str) -> (SceneTree, NodeId) {
         let mut tree = SceneTree::new();
@@ -291,7 +326,8 @@ mod tests {
         let mut tree = SceneTree::new();
         tree.set_root_scene(Box::new(DrawingNode { name: "D".into() }));
 
-        let draws = tree.process(0.016, &[]);
+        let (mut r, mut p, mut a, d, i) = make_servers();
+        let draws = tree.process(0.016, &[], &mut r, &mut p, &mut a, &d, &i);
         assert_eq!(draws.len(), 1);
         assert_eq!(draws[0].position, Vec2::new(1.0, 2.0));
     }
@@ -321,7 +357,8 @@ mod tests {
         let root = tree.set_root_scene(Box::new(SpawnerNode { spawned: false }));
 
         assert_eq!(tree.children_of(root).len(), 0);
-        tree.process(0.016, &[]);
+        let (mut r, mut p, mut a, d, i) = make_servers();
+        tree.process(0.016, &[], &mut r, &mut p, &mut a, &d, &i);
         assert_eq!(tree.children_of(root).len(), 1);
     }
 
