@@ -1,0 +1,20 @@
+[package]
+name = "cl_servers"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+cl_core  = { workspace = true }
+cl_input = { workspace = true }
+rapier2d = { workspace = true }
+log      = { workspace = true }
+
+# Audio is optional — requires ALSA on Linux.
+# Disable with --no-default-features in headless/CI environments.
+rodio = { workspace = true, optional = true }
+
+[features]
+default = ["audio"]
+audio   = ["dep:rodio"]

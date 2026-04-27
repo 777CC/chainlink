@@ -1,0 +1,18 @@
+[package]
+name = "platformer"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "platformer"
+path = "src/main.rs"
+
+[dependencies]
+cl_core    = { workspace = true }
+cl_input   = { workspace = true }
+cl_scene   = { workspace = true }
+cl_engine  = { workspace = true }
+cl_servers = { workspace = true }
+cl_platform = { workspace = true }
