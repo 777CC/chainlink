@@ -58,7 +58,7 @@ rapier2d = { version = "0.22", features = ["default"] }
 rodio = { version = "0.19", default-features = false, features = ["wav", "vorbis"] }
 
 # Editor GUI
-eframe     = { version = "0.27", default-features = false, features = ["default_fonts", "glow", "persistence"] }
+eframe     = { version = "0.27", default-features = false, features = ["default_fonts", "wgpu", "persistence", "x11"] }
 egui       = "0.27"
 rfd        = "0.14"
 image      = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
