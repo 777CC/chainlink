@@ -1,0 +1,24 @@
+[package]
+name        = "cl_editor"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "cl_editor"
+path = "src/main.rs"
+
+[dependencies]
+cl_core     = { workspace = true }
+cl_scene    = { workspace = true }
+
+eframe     = { workspace = true }
+egui       = { workspace = true }
+rfd        = { workspace = true }
+image      = { workspace = true }
+tobj       = { workspace = true }
+serde      = { workspace = true }
+serde_json = { workspace = true }
+log        = { workspace = true }
+env_logger = { workspace = true }
