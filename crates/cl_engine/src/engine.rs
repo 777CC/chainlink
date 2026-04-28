@@ -10,17 +10,15 @@ use cl_servers::{AudioServer, PhysicsServer2D, RenderingServer};
 use log::{error, info};
 use pollster::block_on;
 use winit::{
+    application::ApplicationHandler,
     dpi::LogicalSize,
-    event::{Event, WindowEvent},
-    event_loop::{ControlFlow, EventLoop},
-    window::WindowBuilder,
+    event::WindowEvent,
+    event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
+    window::{Window, WindowId},
 };
 
 use crate::{input_bridge::handle_window_event, time::GameTime};
 
-// ── Gravity constant ──────────────────────────────────────────────────────────
-
-/// Gravity in pixels·s⁻², positive Y is down (screen-space).
 const GRAVITY: cl_core::Vec2 = cl_core::Vec2::new(0.0, 980.0);
 
 // ── EngineBuilder ─────────────────────────────────────────────────────────────
@@ -57,24 +55,63 @@ impl Engine {
 
     pub fn run<F>(self, setup: F)
     where
-        F: FnOnce(&mut SceneTree, &mut InputServer),
+        F: FnOnce(&mut SceneTree, &mut InputServer) + 'static,
     {
         env_logger::try_init().ok();
 
-        // ── Event loop + window ───────────────────────────────────────────────
         let event_loop = EventLoop::new().expect("Failed to create event loop");
+        event_loop.set_control_flow(ControlFlow::Poll);
+
+        let mut app = EngineApp {
+            title:  self.title,
+            width:  self.width,
+            height: self.height,
+            setup:  Some(Box::new(setup)),
+            state:  None,
+        };
+
+        event_loop.run_app(&mut app).expect("Event loop error");
+    }
+}
+
+// ── Initialized render + scene state ─────────────────────────────────────────
+
+struct AppState {
+    window:           Arc<Window>,
+    renderer:         Renderer,
+    rendering_server: RenderingServer,
+    physics_server:   PhysicsServer2D,
+    audio_server:     AudioServer,
+    display_server:   DisplayServer,
+    tree:             SceneTree,
+    input:            InputServer,
+    time:             GameTime,
+}
+
+// ── ApplicationHandler ────────────────────────────────────────────────────────
+
+struct EngineApp {
+    title:  String,
+    width:  u32,
+    height: u32,
+    setup:  Option<Box<dyn FnOnce(&mut SceneTree, &mut InputServer)>>,
+    state:  Option<AppState>,
+}
+
+impl ApplicationHandler for EngineApp {
+    /// Called once the OS is ready (after app launch on macOS, immediately on
+    /// desktop Linux/Windows).  Create the window and all GPU/engine state here.
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        let attrs = Window::default_attributes()
+            .with_title(&self.title)
+            .with_inner_size(LogicalSize::new(self.width, self.height))
+            .with_resizable(true);
 
         let window = Arc::new(
-            WindowBuilder::new()
-                .with_title(&self.title)
-                .with_inner_size(LogicalSize::new(self.width, self.height))
-                .with_resizable(true)
-                .build(&event_loop)
-                .expect("Failed to create window"),
+            event_loop.create_window(attrs).expect("Failed to create window"),
         );
         info!("Window created: {}×{}", self.width, self.height);
 
-        // ── wgpu surface ──────────────────────────────────────────────────────
         let wgpu_instance = wgpu::Instance::default();
         let surface = wgpu_instance
             .create_surface(Arc::clone(&window))
@@ -85,21 +122,21 @@ impl Engine {
             (s.width.max(1), s.height.max(1))
         };
 
-        // ── Renderer ──────────────────────────────────────────────────────────
-        let mut renderer = block_on(Renderer::new(wgpu_instance, surface, init_size));
+        let renderer = block_on(Renderer::new(wgpu_instance, surface, init_size));
         info!("Renderer initialised");
 
-        // ── Servers ───────────────────────────────────────────────────────────
         let mut rendering_server = RenderingServer::new();
         let mut physics_server   = PhysicsServer2D::new();
         let mut audio_server     = AudioServer::new();
-        let mut display_server   = DisplayServer::new(self.width, self.height, &self.title);
+        let display_server       = DisplayServer::new(self.width, self.height, &self.title);
 
-        // ── Scene + input ─────────────────────────────────────────────────────
         let mut tree  = SceneTree::new();
         let mut input = InputServer::new();
 
-        setup(&mut tree, &mut input);
+        if let Some(setup) = self.setup.take() {
+            setup(&mut tree, &mut input);
+        }
+
         tree.ready_all(
             &mut rendering_server,
             &mut physics_server,
@@ -108,68 +145,73 @@ impl Engine {
             &input,
         );
 
-        let mut time = GameTime::new();
+        self.state = Some(AppState {
+            window,
+            renderer,
+            rendering_server,
+            physics_server,
+            audio_server,
+            display_server,
+            tree,
+            input,
+            time: GameTime::new(),
+        });
+    }
 
-        // ── Event loop ────────────────────────────────────────────────────────
-        event_loop
-            .run(move |event, elwt| {
-                elwt.set_control_flow(ControlFlow::Poll);
+    fn window_event(
+        &mut self,
+        event_loop: &ActiveEventLoop,
+        _window_id: WindowId,
+        event: WindowEvent,
+    ) {
+        let Some(state) = self.state.as_mut() else { return };
 
-                match event {
-                    // Close
-                    Event::WindowEvent {
-                        event: WindowEvent::CloseRequested, ..
-                    } => {
-                        info!("Window closed — shutting down");
-                        elwt.exit();
+        match &event {
+            WindowEvent::CloseRequested => {
+                info!("Window closed — shutting down");
+                event_loop.exit();
+            }
+
+            WindowEvent::Resized(new_size) => {
+                let sz = (new_size.width.max(1), new_size.height.max(1));
+                state.renderer.resize(sz);
+                state.display_server.window_size = sz;
+            }
+
+            WindowEvent::RedrawRequested => {
+                state.time.tick();
+
+                let events: Vec<_> = state.input.events.clone();
+                let draw_queue = state.tree.process(
+                    state.time.delta,
+                    &events,
+                    &mut state.rendering_server,
+                    &mut state.physics_server,
+                    &mut state.audio_server,
+                    &state.display_server,
+                    &state.input,
+                );
+                state.input.flush();
+
+                state.physics_server.step(state.time.delta as f32, GRAVITY);
+
+                match state.renderer.render(draw_queue) {
+                    Ok(()) => {}
+                    Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
+                        let sz = state.renderer.size;
+                        state.renderer.resize(sz);
                     }
-
-                    // Resize
-                    Event::WindowEvent {
-                        event: WindowEvent::Resized(new_size), ..
-                    } => {
-                        let sz = (new_size.width.max(1), new_size.height.max(1));
-                        renderer.resize(sz);
-                        display_server.window_size = sz;
-                    }
-
-                    // Tick + render
-                    Event::AboutToWait => {
-                        time.tick();
-
-                        let events: Vec<_> = input.events.clone();
-                        let draw_queue = tree.process(
-                            time.delta,
-                            &events,
-                            &mut rendering_server,
-                            &mut physics_server,
-                            &mut audio_server,
-                            &display_server,
-                            &input,
-                        );
-                        input.flush();
-
-                        // Step physics after scene process
-                        physics_server.step(time.delta as f32, GRAVITY);
-
-                        match renderer.render(draw_queue) {
-                            Ok(()) => {}
-                            Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
-                                let sz = renderer.size;
-                                renderer.resize(sz);
-                            }
-                            Err(e) => error!("Render error: {e}"),
-                        }
-                    }
-
-                    // Forward window events to input bridge
-                    Event::WindowEvent { ref event, .. } => {
-                        handle_window_event(&mut input, event);
-                    }
-
-                    _ => {}
+                    Err(e) => error!("Render error: {e}"),
                 }
-            })
-            .expect("Event loop error");
+            }
+
+            other => handle_window_event(&mut state.input, other),
+        }
+    }
+
+    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+        if let Some(state) = self.state.as_ref() {
+            state.window.request_redraw();
+        }
     }
 }

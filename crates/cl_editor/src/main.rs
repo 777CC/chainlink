@@ -16,6 +16,6 @@ fn main() -> Result<(), eframe::Error> {
     eframe::run_native(
         "Chainlink Editor",
         opts,
-        Box::new(|_cc| Box::new(EditorApp::new())),
+        Box::new(|_cc| Ok(Box::new(EditorApp::new()))),
     )
 }
